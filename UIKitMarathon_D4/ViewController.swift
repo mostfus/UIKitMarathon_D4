@@ -10,28 +10,39 @@ import UIKit
 class CustomCell: UITableViewCell {
     static let identifier = "cellId"
 
-    private(set) var cellDidSelected = false
-    var indexPath: IndexPath?
-
-    func toggleCellSelection() {
-        cellDidSelected.toggle()
-    }
+    var value: Int?
 }
 
 class ViewController: UIViewController {
 
     @IBAction func shuffleButton(_ sender: Any) {
-        cells = cells.shuffled()
+        let normalCells = cells
+        let shuffledCells = cells.shuffled()
+        cells = shuffledCells
         shuffled = true
+
+        var diffs = [Int: Int]()
+
+        for (index, cell) in normalCells.enumerated() {
+            guard let newIndex = shuffledCells.firstIndex(of: cell) else {
+                continue
+            }
+            diffs[index] = newIndex
+        }
 
         CATransaction.begin()
         CATransaction.setCompletionBlock { [weak self] in
             self?.shuffled = false
         }
         tableView.beginUpdates()
-        tableView.reloadData()
+
+        diffs.keys.forEach { key in
+            guard let value = diffs[key] else {
+                return
+            }
+            tableView.moveRow(at: .init(row: key, section: 0), to: .init(row: value, section: 0))
+        }
         tableView.endUpdates()
-        tableView.layoutSubviews()
         CATransaction.commit()
 
     }
@@ -59,8 +70,8 @@ class ViewController: UIViewController {
     private func setupArray() {
         for i in 0...40 {
             let cell = CustomCell()
-            cell.textLabel?.text = "\(i)"
-            cell.selectionStyle = .none
+            cell.value = i
+
             cells.append(cell)
         }
     }
@@ -93,6 +104,8 @@ extension ViewController: UITableViewDelegate {
             return
         }
 
+        cell.backgroundColor = .systemGray3
+
         switch cell.accessoryType {
         case .checkmark:
             cell.accessoryType = .none
@@ -104,6 +117,10 @@ extension ViewController: UITableViewDelegate {
 
             tableView.moveRow(at: indexPath, to: IndexPath(row: 0, section: 0))
         }
+
+        UIView.animate(withDuration: 0.5) {
+            cell.backgroundColor = .clear
+        }
     }
 }
 
@@ -114,6 +131,11 @@ extension ViewController: UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = cells[indexPath.row]
+        cell.selectionStyle = .none
+
+        if let value = cell.value {
+            cell.textLabel?.text = "\(value)"
+        }
 
         return cell
     }
