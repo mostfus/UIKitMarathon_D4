@@ -7,19 +7,28 @@
 
 import UIKit
 
-class CustomCell: UITableViewCell {
-    static let identifier = "cellId"
+class ConfigCell: Equatable {
+    static func == (lhs: ConfigCell, rhs: ConfigCell) -> Bool {
+        lhs.value == rhs.value
+    }
 
-    var value: Int?
+    var value: Int
+    var isSelected: Bool
+
+    init(value: Int, isSelected: Bool) {
+        self.value = value
+        self.isSelected = isSelected
+    }
 }
 
 class ViewController: UIViewController {
+
+    private let identifier = "cellId"
 
     @IBAction func shuffleButton(_ sender: Any) {
         let normalCells = cells
         let shuffledCells = cells.shuffled()
         cells = shuffledCells
-        shuffled = true
 
         var diffs = [Int: Int]()
 
@@ -30,10 +39,6 @@ class ViewController: UIViewController {
             diffs[index] = newIndex
         }
 
-        CATransaction.begin()
-        CATransaction.setCompletionBlock { [weak self] in
-            self?.shuffled = false
-        }
         tableView.beginUpdates()
 
         diffs.keys.forEach { key in
@@ -43,16 +48,12 @@ class ViewController: UIViewController {
             tableView.moveRow(at: .init(row: key, section: 0), to: .init(row: value, section: 0))
         }
         tableView.endUpdates()
-        CATransaction.commit()
-
     }
 
-    private var cells: [CustomCell] = []
-
-    private var shuffled = false
+    private var cells: [ConfigCell] = []
 
     private var tableView: UITableView = {
-        let tv = UITableView()
+        let tv = UITableView(frame: .zero, style: .insetGrouped)
         tv.backgroundColor = .white
         tv.translatesAutoresizingMaskIntoConstraints = false
         return tv
@@ -69,30 +70,24 @@ class ViewController: UIViewController {
 
     private func setupArray() {
         for i in 0...40 {
-            let cell = CustomCell()
-            cell.value = i
-
+            let cell = ConfigCell(value: i, isSelected: false)
             cells.append(cell)
         }
     }
 
     private func setupTableView() {
-        tableView.register(CustomCell.self, forCellReuseIdentifier: CustomCell.identifier)
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: identifier)
 
         view.addSubview(tableView)
 
         tableView.dataSource = self
         tableView.delegate = self
         tableView.showsVerticalScrollIndicator = false
-        tableView.layer.cornerRadius = 16
-        tableView.layer.cornerCurve = .continuous
-        tableView.estimatedRowHeight = 20
-
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 16),
-            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16.0),
-            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16.0),
+            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
+            tableView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
     }
@@ -100,26 +95,25 @@ class ViewController: UIViewController {
 
 extension ViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        guard let cell = tableView.cellForRow(at: indexPath) as? CustomCell else {
+        guard let cell = tableView.cellForRow(at: indexPath) else {
             return
         }
-
-        cell.backgroundColor = .systemGray3
+        let cellConfig = cells[indexPath.row]
+        cellConfig.isSelected.toggle()
 
         switch cell.accessoryType {
         case .checkmark:
             cell.accessoryType = .none
+            tableView.deselectRow(at: indexPath, animated: true)
         default:
             cell.accessoryType = .checkmark
 
+            let newIndex = IndexPath(row: 0, section: 0)
             let cellForInsert = cells.remove(at: indexPath.row)
             cells.insert(cellForInsert, at: 0)
 
-            tableView.moveRow(at: indexPath, to: IndexPath(row: 0, section: 0))
-        }
-
-        UIView.animate(withDuration: 0.5) {
-            cell.backgroundColor = .clear
+            tableView.moveRow(at: indexPath, to: newIndex)
+            tableView.deselectRow(at: newIndex, animated: true)
         }
     }
 }
@@ -130,12 +124,11 @@ extension ViewController: UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = cells[indexPath.row]
-        cell.selectionStyle = .none
+        let cell = tableView.dequeueReusableCell(withIdentifier: identifier)!
+        let config = cells[indexPath.row]
 
-        if let value = cell.value {
-            cell.textLabel?.text = "\(value)"
-        }
+        cell.textLabel?.text = "\(config.value)"
+        cell.accessoryType = config.isSelected ? .checkmark : .none
 
         return cell
     }
