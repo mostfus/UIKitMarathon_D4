@@ -25,7 +25,7 @@ class ViewController: UIViewController {
 
     private let identifier = "cellId"
 
-    @IBAction func shuffleButton(_ sender: Any) {
+    func shuffleButton() {
         let normalCells = cells
         let shuffledCells = cells.shuffled()
         cells = shuffledCells
@@ -83,6 +83,10 @@ class ViewController: UIViewController {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.showsVerticalScrollIndicator = false
+
+        navigationItem.rightBarButtonItem = .init(title: "Shuffle", primaryAction: .init(handler: { [weak self] _ in
+            self?.shuffleButton()
+        }))
 
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
